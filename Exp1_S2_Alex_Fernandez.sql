@@ -1,21 +1,14 @@
--- ============================================================
 -- VARIABLE BIND PARA FECHA DE PROCESO
--- ============================================================
 -- Se realiza de esta forma debido a que en Oracle SQL Developer / Oracle Cloud, el comando VARIABLE NO es compatible con el tipo DATE
 VARIABLE b_fecha_proceso  VARCHAR2(10)
 EXEC :b_fecha_proceso := TO_CHAR(SYSDATE, 'DD/MM/YYYY');
 
--- ============================================================
 -- LIMPIEZA DE TABLA DESTINO
--- ============================================================
 TRUNCATE TABLE usuario_clave;
 
--- ============================================================
--- BLOQUE PL/SQL ANÓNIMO
--- ============================================================
 DECLARE
     -- --------------------------------------------------------
-    -- VARIABLES (%TYPE)
+    -- VARIABLES 
     -- --------------------------------------------------------
     v_id_emp           empleado.id_emp%TYPE;
     v_run              empleado.numrun_emp%TYPE;
@@ -34,11 +27,19 @@ DECLARE
     v_clave            VARCHAR2(30);
     v_anios_trab       NUMBER;
     v_contador         NUMBER := 0;
+    v_total_emp        NUMBER;
 
 BEGIN
     -- --------------------------------------------------------
     -- ITERACIÓN DE EMPLEADOS
     -- --------------------------------------------------------
+    SELECT COUNT(*) 
+    INTO v_total_emp
+    FROM empleado
+    WHERE id_emp BETWEEN 100 AND 320;
+
+    DBMS_OUTPUT.PUT_LINE('Total empleados a procesar: ' || v_total_emp);
+
     FOR r IN (
         SELECT 
             e.id_emp,
@@ -57,7 +58,9 @@ BEGIN
         ORDER BY e.id_emp
     ) LOOP
 
+        -- ----------------------------------------------------
         -- ASIGNACIÓN DE VARIABLES
+        -- ----------------------------------------------------
         v_id_emp       := r.id_emp;
         v_run          := r.numrun_emp;
         v_dv           := r.dvrun_emp;
@@ -68,13 +71,15 @@ BEGIN
         v_fecha_cont   := r.fecha_contrato;
         v_estado_civil := r.nombre_estado_civil;
 
+        DBMS_OUTPUT.PUT_LINE('Procesando empleado ID: ' || v_id_emp || ' | RUN: ' || v_run);
+
         -- ----------------------------------------------------
         -- CÁLCULO AÑOS TRABAJADOS
         -- ----------------------------------------------------
         v_anios_trab := FLOOR(MONTHS_BETWEEN(TO_DATE(:b_fecha_proceso, 'DD/MM/YYYY'), v_fecha_cont) / 12);
 
         -- ----------------------------------------------------
-        -- GENERACIÓN NOMBRE DE USUARIO (PL/SQL)
+        -- GENERACIÓN NOMBRE DE USUARIO
         -- ----------------------------------------------------
         v_usuario :=
               LOWER(SUBSTR(v_estado_civil, 1, 1))
@@ -90,7 +95,7 @@ BEGIN
         END IF;
 
         -- ----------------------------------------------------
-        -- GENERACIÓN CLAVE (PL/SQL + CONDICIONALES)
+        -- GENERACIÓN CLAVE 
         -- ----------------------------------------------------
         v_clave :=
               SUBSTR(v_run, 3, 1)
@@ -112,7 +117,7 @@ BEGIN
                    || TO_CHAR(TO_DATE(:b_fecha_proceso, 'DD/MM/YYYY'), 'MMYYYY');
 
         -- ----------------------------------------------------
-        -- INSERCIÓN EN TABLA USUARIO_CLAVE
+        -- INSERTA REGISTRO EN TABLA USUARIO_CLAVE
         -- ----------------------------------------------------
         INSERT INTO usuario_clave
         (id_emp, numrun_emp, dvrun_emp, nombre_empleado, nombre_usuario, clave_usuario)
@@ -130,7 +135,8 @@ BEGIN
     -- --------------------------------------------------------
     -- CONTROL DE TRANSACCIÓN
     -- --------------------------------------------------------
-    IF v_contador > 0 THEN
+    IF v_contador = v_total_emp THEN
+        DBMS_OUTPUT.PUT_LINE('Todos los empleados fueron procesados correctamente. Confirmando cambios...');
         COMMIT;
     ELSE
         ROLLBACK;
