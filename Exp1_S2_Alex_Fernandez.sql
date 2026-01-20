@@ -1,3 +1,6 @@
+-- Mostrar mensajes por pantalla desde PL/SQL
+SET SERVEROUTPUT ON;
+
 -- VARIABLE BIND PARA FECHA DE PROCESO
 -- Se realiza de esta forma debido a que en Oracle SQL Developer / Oracle Cloud, el comando VARIABLE NO es compatible con el tipo DATE
 VARIABLE b_fecha_proceso  VARCHAR2(10)
